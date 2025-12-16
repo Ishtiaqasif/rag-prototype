@@ -1,6 +1,7 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 import { TextLoader } from "@langchain/classic/document_loaders/fs/text"
+import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { RecursiveCharacterTextSplitter } from "@langchain/classic/text_splitter";
 import { OllamaEmbeddings } from "@langchain/ollama";
 import { MemoryVectorStore } from "@langchain/classic/vectorstores/memory";
@@ -13,7 +14,7 @@ const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "llama3";
 
 async function main() {
     console.log("Loading documents from:", DATA_DIR);
-    const files = fs.readdirSync(DATA_DIR).filter(f => f.endsWith(".txt"));
+    const files = fs.readdirSync(DATA_DIR).filter(f => f.endsWith(".txt") || f.endsWith(".pdf"));
 
     if (files.length === 0) {
         console.log("No .txt files found in data directory.");
@@ -22,7 +23,10 @@ async function main() {
 
     const documents = [];
     for (const file of files) {
-        const loader = new TextLoader(path.join(DATA_DIR, file));
+        const filePath = path.join(DATA_DIR, file);
+        const loader = file.endsWith(".pdf")
+            ? new PDFLoader(filePath)
+            : new TextLoader(filePath);
         const docs = await loader.load();
         documents.push(...docs);
     }

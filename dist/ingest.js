@@ -39,6 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const dotenv = __importStar(require("dotenv"));
 dotenv.config();
 const text_1 = require("@langchain/classic/document_loaders/fs/text");
+const pdf_1 = require("@langchain/community/document_loaders/fs/pdf");
 const text_splitter_1 = require("@langchain/classic/text_splitter");
 const ollama_1 = require("@langchain/ollama");
 const memory_1 = require("@langchain/classic/vectorstores/memory");
@@ -49,14 +50,17 @@ const VECTOR_STORE_PATH = path_1.default.join(process.cwd(), process.env.LANCEDB
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "llama3";
 async function main() {
     console.log("Loading documents from:", DATA_DIR);
-    const files = fs_1.default.readdirSync(DATA_DIR).filter(f => f.endsWith(".txt"));
+    const files = fs_1.default.readdirSync(DATA_DIR).filter(f => f.endsWith(".txt") || f.endsWith(".pdf"));
     if (files.length === 0) {
         console.log("No .txt files found in data directory.");
         return;
     }
     const documents = [];
     for (const file of files) {
-        const loader = new text_1.TextLoader(path_1.default.join(DATA_DIR, file));
+        const filePath = path_1.default.join(DATA_DIR, file);
+        const loader = file.endsWith(".pdf")
+            ? new pdf_1.PDFLoader(filePath)
+            : new text_1.TextLoader(filePath);
         const docs = await loader.load();
         documents.push(...docs);
     }
