@@ -4,3 +4,4 @@ node_modules
 data/*
 # ...except the sample directory
 !data/sample/
+!lancedb
