@@ -35,33 +35,35 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 const dotenv = __importStar(require("dotenv"));
 dotenv.config();
-const pg_1 = require("pg");
 const pinecone_1 = require("@pinecone-database/pinecone");
-const VECTOR_STORE = process.env.VECTOR_STORE || "pgvector";
-async function checkCount() {
-    console.log(`Checking count for ${VECTOR_STORE}...`);
-    if (VECTOR_STORE === "pgvector") {
-        const client = new pg_1.Client({
-            host: process.env.PG_HOST,
-            port: parseInt(process.env.PG_PORT || "5432"),
-            user: process.env.PG_USER,
-            password: process.env.PG_PASSWORD,
-            database: process.env.PG_DATABASE,
-        });
-        await client.connect();
-        const res = await client.query("SELECT COUNT(*) FROM cv_documents");
-        console.log(`Current Count: ${res.rows[0].count}`);
-        await client.end();
-    }
-    else if (VECTOR_STORE === "pinecone") {
-        if (!process.env.PINECONE_API_KEY || !process.env.PINECONE_INDEX) {
-            console.error("Missing Pinecone details.");
-            process.exit(1);
-        }
-        const pc = new pinecone_1.Pinecone({ apiKey: process.env.PINECONE_API_KEY });
-        const index = pc.Index(process.env.PINECONE_INDEX);
+const ollama_1 = require("@langchain/ollama");
+const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "llama3";
+async function test() {
+    console.log("Testing Pinecone connection...");
+    const pc = new pinecone_1.Pinecone({ apiKey: process.env.PINECONE_API_KEY });
+    const indexName = process.env.PINECONE_INDEX;
+    console.log(`Using Index: ${indexName}`);
+    const index = pc.Index(indexName);
+    console.log("Checking Embeddings...");
+    const embeddings = new ollama_1.OllamaEmbeddings({ model: EMBEDDING_MODEL });
+    const sample = await embeddings.embedQuery("test");
+    console.log(`Embedding Dimensions: ${sample.length}`);
+    try {
         const stats = await index.describeIndexStats();
-        console.log(`Current Count (Total Vectors): ${stats.totalRecordCount}`);
+        console.log("Success! Index Stats:", stats);
+        console.log("Testing upsert...");
+        await index.upsert([{
+                id: "test-id-1",
+                values: new Array(stats.dimension).fill(0.1),
+                metadata: { test: true }
+            }]);
+        console.log("Upsert successful!");
+        console.log("Testing delete...");
+        await index.deleteOne("test-id-1");
+        console.log("Delete successful!");
+    }
+    catch (e) {
+        console.error("Test failed:", e);
     }
 }
-checkCount().catch(console.error);
+test();

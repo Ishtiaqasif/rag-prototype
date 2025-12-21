@@ -43,12 +43,15 @@ const pdf_1 = require("@langchain/community/document_loaders/fs/pdf");
 const text_splitter_1 = require("@langchain/classic/text_splitter");
 const ollama_1 = require("@langchain/ollama");
 const pgvector_1 = require("@langchain/community/vectorstores/pgvector");
+const pinecone_1 = require("@langchain/pinecone");
+const pinecone_2 = require("@pinecone-database/pinecone");
 const pg_1 = require("pg");
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const crypto_1 = __importDefault(require("crypto"));
-const DATA_DIR = path_1.default.join(process.cwd(), "data/cvs");
+const DATA_DIR = path_1.default.join(process.cwd(), "data/pinecone");
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "llama3";
+const VECTOR_STORE = process.env.VECTOR_STORE || "pinecone";
 /**
  * Extracts the first email found in the text.
  */
@@ -71,34 +74,52 @@ function generateId(email, content, index) {
     ].join("-");
 }
 async function main() {
-    // Check for PG credentials
-    if (!process.env.PG_HOST || !process.env.PG_USER || !process.env.PG_PASSWORD || !process.env.PG_DATABASE) {
-        console.error("Missing PostgreSQL connection details in .env file.");
+    console.log(`Using Vector Store: ${VECTOR_STORE}`);
+    const embeddings = new ollama_1.OllamaEmbeddings({ model: EMBEDDING_MODEL });
+    let vectorStore;
+    let pool = null;
+    let pineconeIndex = null;
+    if (VECTOR_STORE === "pgvector") {
+        if (!process.env.PG_HOST || !process.env.PG_USER || !process.env.PG_PASSWORD || !process.env.PG_DATABASE) {
+            console.error("Missing PostgreSQL connection details in .env file.");
+            process.exit(1);
+        }
+        const pgConfig = {
+            host: process.env.PG_HOST,
+            port: parseInt(process.env.PG_PORT || "5432"),
+            user: process.env.PG_USER,
+            password: process.env.PG_PASSWORD,
+            database: process.env.PG_DATABASE,
+        };
+        pool = new pg_1.Pool(pgConfig);
+        vectorStore = await pgvector_1.PGVectorStore.initialize(embeddings, {
+            postgresConnectionOptions: pgConfig,
+            tableName: "cv_documents",
+            columns: {
+                idColumnName: "id",
+                vectorColumnName: "embedding",
+                contentColumnName: "text",
+                metadataColumnName: "metadata",
+            },
+        });
+        console.log("Running legacy data cleanup (removing records without emails)...");
+        await pool.query("DELETE FROM cv_documents WHERE metadata->>'email' IS NULL");
+    }
+    else if (VECTOR_STORE === "pinecone") {
+        if (!process.env.PINECONE_API_KEY || !process.env.PINECONE_INDEX) {
+            console.error("Missing Pinecone connection details in .env file.");
+            process.exit(1);
+        }
+        const pc = new pinecone_2.Pinecone({ apiKey: process.env.PINECONE_API_KEY });
+        pineconeIndex = pc.Index(process.env.PINECONE_INDEX);
+        vectorStore = await pinecone_1.PineconeStore.fromExistingIndex(embeddings, {
+            pineconeIndex,
+        });
+    }
+    else {
+        console.error(`Unsupported VECTOR_STORE: ${VECTOR_STORE}`);
         process.exit(1);
     }
-    const pgConfig = {
-        host: process.env.PG_HOST,
-        port: parseInt(process.env.PG_PORT || "5432"),
-        user: process.env.PG_USER,
-        password: process.env.PG_PASSWORD,
-        database: process.env.PG_DATABASE,
-    };
-    const pool = new pg_1.Pool(pgConfig);
-    console.log("Initializing Embeddings...");
-    const embeddings = new ollama_1.OllamaEmbeddings({ model: EMBEDDING_MODEL });
-    const vectorStore = await pgvector_1.PGVectorStore.initialize(embeddings, {
-        postgresConnectionOptions: pgConfig,
-        tableName: "cv_documents",
-        columns: {
-            idColumnName: "id",
-            vectorColumnName: "embedding",
-            contentColumnName: "text",
-            metadataColumnName: "metadata",
-        },
-    });
-    // --- Optional Cleanup of legacy data (without emails) ---
-    console.log("Running legacy data cleanup (removing records without emails)...");
-    await pool.query("DELETE FROM cv_documents WHERE metadata->>'email' IS NULL");
     console.log("Loading files from:", DATA_DIR);
     const files = fs_1.default.readdirSync(DATA_DIR).filter(f => f.endsWith(".txt") || f.endsWith(".pdf"));
     const splitter = new text_splitter_1.RecursiveCharacterTextSplitter({
@@ -117,17 +138,51 @@ async function main() {
             console.warn(`Could not find email in ${file}. Skipping.`);
             continue;
         }
-        // Check if we already have this email with the same content hash
-        const existingDocs = await pool.query("SELECT id FROM cv_documents WHERE metadata->>'email' = $1 AND metadata->>'contentHash' = $2 LIMIT 1", [email, contentHash]);
-        if (existingDocs.rowCount && existingDocs.rowCount > 0) {
+        // --- Deduplication Logic ---
+        let alreadyUpToDate = false;
+        if (VECTOR_STORE === "pgvector" && pool) {
+            const existingDocs = await pool.query("SELECT id FROM cv_documents WHERE metadata->>'email' = $1 AND metadata->>'contentHash' = $2 LIMIT 1", [email, contentHash]);
+            if (existingDocs.rowCount && existingDocs.rowCount > 0)
+                alreadyUpToDate = true;
+        }
+        else if (VECTOR_STORE === "pinecone" && pineconeIndex) {
+            const dummyVector = await embeddings.embedQuery("dummy");
+            const queryResponse = await pineconeIndex.query({
+                vector: dummyVector,
+                filter: {
+                    email: { "$eq": email },
+                    contentHash: { "$eq": contentHash }
+                },
+                topK: 1,
+                includeMetadata: true
+            });
+            if (queryResponse.matches && queryResponse.matches.length > 0)
+                alreadyUpToDate = true;
+        }
+        if (alreadyUpToDate) {
             console.log(`Skipping ${file}: Data for ${email} is already up to date.`);
             continue;
         }
         console.log(`Changes detected for ${email}. Updating...`);
-        // Delete existing records for this email
-        await pool.query("DELETE FROM cv_documents WHERE metadata->>'email' = $1", [email]);
+        // --- Deletion Logic ---
+        if (VECTOR_STORE === "pgvector" && pool) {
+            await pool.query("DELETE FROM cv_documents WHERE metadata->>'email' = $1", [email]);
+        }
+        else if (VECTOR_STORE === "pinecone" && pineconeIndex) {
+            // Pinecone Serverless does not support delete by filter. 
+            // We must query for IDs first, then delete by ID.
+            const queryResponse = await pineconeIndex.query({
+                vector: await embeddings.embedQuery("dummy"),
+                filter: { email: { "$eq": email } },
+                topK: 1000,
+                includeMetadata: false
+            });
+            if (queryResponse.matches && queryResponse.matches.length > 0) {
+                const idsToDelete = queryResponse.matches.map((m) => m.id);
+                await pineconeIndex.deleteMany(idsToDelete);
+            }
+        }
         const splitDocs = await splitter.splitDocuments(docs);
-        // Add metadata to each chunk
         splitDocs.forEach(doc => {
             doc.metadata.email = email;
             doc.metadata.contentHash = contentHash;
@@ -138,7 +193,8 @@ async function main() {
         console.log(`Ingested ${splitDocs.length} chunks for ${email}.`);
     }
     console.log("\nIngestion process complete!");
-    await pool.end();
+    if (pool)
+        await pool.end();
     process.exit(0);
 }
 main().catch((e) => {

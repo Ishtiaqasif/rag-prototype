@@ -14,6 +14,7 @@ import fs from "fs";
 // --- Configuration ---
 const MODEL_NAME = process.env.LLM_MODEL || "llama3";
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "llama3";
+const VECTOR_STORE = process.env.VECTOR_STORE || "pgvector";
 
 // --- State ---
 let currentJobDescription = "";
@@ -42,11 +43,6 @@ function getDiversityDocs(docs: any[], count: number = 5): any[] {
         if (diverseDocs.length >= count) break;
     }
 
-    // If we didn't get enough unique sources, fill up with remaining high-score docs (if we had scores, but here we assume order is score)
-    // For now, let's just return what we have and maybe fill the rest if strictly needed, 
-    // but usually user wants "Shortlist N", so uniqueness is key.
-    // If we only have 1 candidate match, we just return that.
-
     return diverseDocs;
 }
 
@@ -59,38 +55,53 @@ const formatDocumentsAsString = (documents: any[]) => {
 
 async function main() {
     console.log("---------------------------------------");
-    console.log("Initializing AI Recruiter System...");
+    console.log(`AI Recruiter System (Store: ${VECTOR_STORE})`);
     console.log("---------------------------------------");
-
-    // 1. Load Vector DB
-    if (!process.env.PG_HOST || !process.env.PG_USER || !process.env.PG_PASSWORD || !process.env.PG_DATABASE) {
-        console.error("Missing PostgreSQL connection details in .env file.");
-        process.exit(1);
-    }
 
     const embeddings = new OllamaEmbeddings({
         model: EMBEDDING_MODEL,
     });
 
-    console.log("Connecting to PGVector store...");
-    const pgConfig = {
-        host: process.env.PG_HOST,
-        port: parseInt(process.env.PG_PORT || "5432"),
-        user: process.env.PG_USER,
-        password: process.env.PG_PASSWORD,
-        database: process.env.PG_DATABASE,
-    };
+    let vectorStore: any;
 
-    const vectorStore = await PGVectorStore.initialize(embeddings, {
-        postgresConnectionOptions: pgConfig,
-        tableName: "cv_documents",
-        columns: {
-            idColumnName: "id",
-            vectorColumnName: "embedding",
-            contentColumnName: "text",
-            metadataColumnName: "metadata",
-        },
-    });
+    if (VECTOR_STORE === "pgvector") {
+        if (!process.env.PG_HOST || !process.env.PG_USER || !process.env.PG_PASSWORD || !process.env.PG_DATABASE) {
+            console.error("Missing PostgreSQL connection details in .env file.");
+            process.exit(1);
+        }
+        const pgConfig = {
+            host: process.env.PG_HOST,
+            port: parseInt(process.env.PG_PORT || "5432"),
+            user: process.env.PG_USER,
+            password: process.env.PG_PASSWORD,
+            database: process.env.PG_DATABASE,
+        };
+        vectorStore = await PGVectorStore.initialize(embeddings, {
+            postgresConnectionOptions: pgConfig,
+            tableName: "cv_documents",
+            columns: {
+                idColumnName: "id",
+                vectorColumnName: "embedding",
+                contentColumnName: "text",
+                metadataColumnName: "metadata",
+            },
+        });
+    } else if (VECTOR_STORE === "pinecone") {
+        if (!process.env.PINECONE_API_KEY || !process.env.PINECONE_INDEX) {
+            console.error("Missing Pinecone connection details in .env file.");
+            process.exit(1);
+        }
+        const { Pinecone } = await import("@pinecone-database/pinecone");
+        const { PineconeStore } = await import("@langchain/pinecone");
+        const pc = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
+        const pineconeIndex = pc.Index(process.env.PINECONE_INDEX);
+        vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
+            pineconeIndex,
+        });
+    } else {
+        console.error(`Unsupported VECTOR_STORE: ${VECTOR_STORE}`);
+        process.exit(1);
+    }
 
     // We retrieve more docs to ensure diversity
     const retriever = vectorStore.asRetriever({
@@ -167,7 +178,8 @@ Answer:`;
         // Note: langchain's Runnable chain with retriever would just pass raw k docs.
         // We want to intervene.
 
-        const retrievedDocs = await retriever._getRelevantDocuments(userInput + " " + currentJobDescription); // Mix query with JD for better semantic match
+        const retrievedDocs = await retriever.invoke(userInput + " " + currentJobDescription); // Mix query with JD for better semantic match
+        console.log(`Found ${retrievedDocs.length} relevant chunks.`);
         const diverseDocs = getDiversityDocs(retrievedDocs, 5); // Pick top 5 unique candidates if possible
 
         const contextString = formatDocumentsAsString(diverseDocs);

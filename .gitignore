@@ -2,7 +2,3 @@ node_modules
 .env
 # Ignore all data...
 data/*
-# ...except the sample directory
-!data/sample/
-!data/cvs/
-!lancedb
