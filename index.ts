@@ -8,11 +8,14 @@ import { StringOutputParser } from "@langchain/core/output_parsers";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { RunnablePassthrough, RunnableSequence } from "@langchain/core/runnables";
 import * as readline from "readline";
+import path from "path";
+import fs from "fs";
 
 // --- Configuration ---
 const MODEL_NAME = process.env.LLM_MODEL || "llama3";
-const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "llama3";
-const VECTOR_STORE = process.env.VECTOR_STORE || "pgvector";
+const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "llama3.2:latest";
+const VECTOR_STORE = process.env.VECTOR_STORE || "json";
+const JSON_STORAGE_PATH = path.join(process.cwd(), "data", "json-embeddings", "embeddings.json");
 
 // --- Setup CLI ---
 const rl = readline.createInterface({
@@ -25,6 +28,18 @@ const askQuestion = (query: string) => new Promise<string>((resolve) => rl.quest
 const formatDocumentsAsString = (documents: any[]) => {
     return documents.map((document) => document.pageContent).join("\n\n");
 };
+
+function cosineSimilarity(vecA: number[], vecB: number[]): number {
+    let dotProduct = 0;
+    let normA = 0;
+    let normB = 0;
+    for (let i = 0; i < vecA.length; i++) {
+        dotProduct += vecA[i] * vecB[i];
+        normA += vecA[i] * vecA[i];
+        normB += vecB[i] * vecB[i];
+    }
+    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+}
 
 async function main() {
     console.log(`Initializing RAG System (Store: ${VECTOR_STORE})...`);
@@ -69,15 +84,47 @@ async function main() {
         vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
             pineconeIndex,
         });
+    } else if (VECTOR_STORE === "json") {
+        console.log(`Using JSON Storage: ${JSON_STORAGE_PATH}`);
     } else {
         console.error(`Unsupported VECTOR_STORE: ${VECTOR_STORE}`);
         process.exit(1);
     }
 
-    const retriever = vectorStore.asRetriever({
-        k: 10, // Retrieve top 4 chunks
-        searchType: "similarity",
-    });
+    let retriever: any;
+    if (VECTOR_STORE === "json") {
+        retriever = {
+            invoke: async (query: string) => {
+                if (!fs.existsSync(JSON_STORAGE_PATH)) return [];
+                const data = JSON.parse(fs.readFileSync(JSON_STORAGE_PATH, "utf-8"));
+                const queryVector = await embeddings.embedQuery(query);
+                const results = data
+                    .map((item: any) => ({
+                        ...item,
+                        score: cosineSimilarity(queryVector, item.vector)
+                    }))
+                    .sort((a: any, b: any) => b.score - a.score)
+                    .slice(0, 10);
+
+                return results.map((r: any) => ({
+                    pageContent: r.content,
+                    metadata: r.metadata
+                }));
+            },
+            pipe: (fn: any) => {
+                const next = async (query: string) => {
+                    const docs = await retriever.invoke(query);
+                    return fn(docs);
+                };
+                return { invoke: next };
+            }
+        };
+    } else {
+        retriever = vectorStore.asRetriever({
+            k: 10, // Retrieve top 10 chunks
+            searchType: "similarity",
+        });
+    }
 
     // 2. Setup LLM and Prompts
     const llm = new ChatOllama({

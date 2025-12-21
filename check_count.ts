@@ -30,6 +30,16 @@ async function checkCount() {
         const index = pc.Index(process.env.PINECONE_INDEX);
         const stats = await index.describeIndexStats();
         console.log(`Current Count (Total Vectors): ${stats.totalRecordCount}`);
+    } else if (VECTOR_STORE === "json") {
+        const path = require("path");
+        const fs = require("fs");
+        const storagePath = path.join(process.cwd(), "data", "json-embeddings", "embeddings.json");
+        if (fs.existsSync(storagePath)) {
+            const data = JSON.parse(fs.readFileSync(storagePath, "utf-8"));
+            console.log(`Current Count: ${data.length}`);
+        } else {
+            console.log("Current Count: 0 (File not found)");
+        }
     }
 }
 

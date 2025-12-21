@@ -12,9 +12,10 @@ import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 
-const DATA_DIR = path.join(process.cwd(), "data/pinecone");
-const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "llama3";
-const VECTOR_STORE = process.env.VECTOR_STORE || "pinecone";
+const DATA_DIR = process.env.DATA_DIR || "data/top100";
+const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "llama3.2:latest";
+const VECTOR_STORE = process.env.VECTOR_STORE || "json";
+const JSON_STORAGE_PATH = path.join(process.cwd(), "data", "json-embeddings", "embeddings.json");
 
 /**
  * Extracts the first email found in the text.
@@ -83,6 +84,10 @@ async function main() {
         vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
             pineconeIndex,
         });
+    } else if (VECTOR_STORE === "json") {
+        console.log(`JSON Storage initialized at: ${JSON_STORAGE_PATH}`);
+        // json mode doesn't need a LangChain vectorStore object for ingestion here,
+        // we'll handle saving manually to have full control over the local file.
     } else {
         console.error(`Unsupported VECTOR_STORE: ${VECTOR_STORE}`);
         process.exit(1);
@@ -131,6 +136,12 @@ async function main() {
                 includeMetadata: true
             });
             if (queryResponse.matches && queryResponse.matches.length > 0) alreadyUpToDate = true;
+        } else if (VECTOR_STORE === "json") {
+            if (fs.existsSync(JSON_STORAGE_PATH)) {
+                const data = JSON.parse(fs.readFileSync(JSON_STORAGE_PATH, "utf-8"));
+                const existing = data.find((item: any) => item.metadata.email === email && item.metadata.contentHash === contentHash);
+                if (existing) alreadyUpToDate = true;
+            }
         }
 
         if (alreadyUpToDate) {
@@ -157,6 +168,12 @@ async function main() {
                 const idsToDelete = queryResponse.matches.map((m: any) => m.id);
                 await pineconeIndex.deleteMany(idsToDelete);
             }
+        } else if (VECTOR_STORE === "json") {
+            if (fs.existsSync(JSON_STORAGE_PATH)) {
+                const data = JSON.parse(fs.readFileSync(JSON_STORAGE_PATH, "utf-8"));
+                const filtered = data.filter((item: any) => item.metadata.email !== email);
+                fs.writeFileSync(JSON_STORAGE_PATH, JSON.stringify(filtered, null, 2));
+            }
         }
 
         const splitDocs = await splitter.splitDocuments(docs);
@@ -167,8 +184,24 @@ async function main() {
         });
 
         const ids = splitDocs.map((doc: any, i: number) => generateId(email, doc.pageContent, i));
-        await vectorStore.addDocuments(splitDocs, { ids });
-        console.log(`Ingested ${splitDocs.length} chunks for ${email}.`);
+
+        if (VECTOR_STORE === "json") {
+            const newVectors = await Promise.all(splitDocs.map(async (doc, i) => {
+                const vector = await embeddings.embedQuery(doc.pageContent);
+                return {
+                    id: ids[i],
+                    vector,
+                    content: doc.pageContent,
+                    metadata: doc.metadata
+                };
+            }));
+            const existingData = fs.existsSync(JSON_STORAGE_PATH) ? JSON.parse(fs.readFileSync(JSON_STORAGE_PATH, "utf-8")) : [];
+            fs.writeFileSync(JSON_STORAGE_PATH, JSON.stringify([...existingData, ...newVectors], null, 2));
+            console.log(`Ingested ${splitDocs.length} chunks into JSON for ${email}.`);
+        } else {
+            await vectorStore.addDocuments(splitDocs, { ids });
+            console.log(`Ingested ${splitDocs.length} chunks for ${email}.`);
+        }
     }
 
     console.log("\nIngestion process complete!");

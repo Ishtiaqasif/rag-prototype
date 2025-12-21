@@ -30,6 +30,16 @@ async function wipe() {
         const index = pc.Index(process.env.PINECONE_INDEX);
         await index.deleteAll();
         console.log("Pinecone index cleared.");
+    } else if (VECTOR_STORE === "json") {
+        const path = require("path");
+        const fs = require("fs");
+        const storagePath = path.join(process.cwd(), "data", "json-embeddings", "embeddings.json");
+        if (fs.existsSync(storagePath)) {
+            fs.unlinkSync(storagePath);
+            console.log("JSON storage file deleted.");
+        } else {
+            console.log("JSON storage file already empty.");
+        }
     }
 }
 

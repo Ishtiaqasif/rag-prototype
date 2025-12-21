@@ -15,6 +15,7 @@ import fs from "fs";
 const MODEL_NAME = process.env.LLM_MODEL || "llama3";
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "llama3";
 const VECTOR_STORE = process.env.VECTOR_STORE || "pgvector";
+const JSON_STORAGE_PATH = path.join(process.cwd(), "data", "json-embeddings", "embeddings.json");
 
 // --- State ---
 let currentJobDescription = "";
@@ -44,6 +45,18 @@ function getDiversityDocs(docs: any[], count: number = 5): any[] {
     }
 
     return diverseDocs;
+}
+
+function cosineSimilarity(vecA: number[], vecB: number[]): number {
+    let dotProduct = 0;
+    let normA = 0;
+    let normB = 0;
+    for (let i = 0; i < vecA.length; i++) {
+        dotProduct += vecA[i] * vecB[i];
+        normA += vecA[i] * vecA[i];
+        normB += vecB[i] * vecB[i];
+    }
+    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
 const formatDocumentsAsString = (documents: any[]) => {
@@ -98,16 +111,41 @@ async function main() {
         vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
             pineconeIndex,
         });
+    } else if (VECTOR_STORE === "json") {
+        console.log(`Using JSON Storage: ${JSON_STORAGE_PATH}`);
     } else {
         console.error(`Unsupported VECTOR_STORE: ${VECTOR_STORE}`);
         process.exit(1);
     }
 
     // We retrieve more docs to ensure diversity
-    const retriever = vectorStore.asRetriever({
-        k: 20,
-        searchType: "similarity",
-    });
+    let retriever: any;
+    if (VECTOR_STORE === "json") {
+        retriever = {
+            invoke: async (query: string) => {
+                if (!fs.existsSync(JSON_STORAGE_PATH)) return [];
+                const data = JSON.parse(fs.readFileSync(JSON_STORAGE_PATH, "utf-8"));
+                const queryVector = await embeddings.embedQuery(query);
+                const results = data
+                    .map((item: any) => ({
+                        ...item,
+                        score: cosineSimilarity(queryVector, item.vector)
+                    }))
+                    .sort((a: any, b: any) => b.score - a.score)
+                    .slice(0, 20); // Get k=20 for diversity filtering
+
+                return results.map((r: any) => ({
+                    pageContent: r.content,
+                    metadata: r.metadata
+                }));
+            }
+        };
+    } else {
+        retriever = vectorStore.asRetriever({
+            k: 20,
+            searchType: "similarity",
+        });
+    }
 
     // 2. Setup LLM
     const llm = new ChatOllama({

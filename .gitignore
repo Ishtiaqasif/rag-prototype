@@ -1,4 +1,4 @@
 node_modules
 .env
-# Ignore all data...
-data/*
+data
+dist
