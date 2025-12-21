@@ -3,7 +3,7 @@ dotenv.config();
 
 import { OllamaEmbeddings } from "@langchain/ollama";
 import { ChatOllama } from "@langchain/ollama";
-import { MemoryVectorStore } from "@langchain/classic/vectorstores/memory";
+import { PGVectorStore } from "@langchain/community/vectorstores/pgvector";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { RunnablePassthrough, RunnableSequence } from "@langchain/core/runnables";
@@ -17,19 +17,38 @@ const formatDocumentsAsString = (documents: any[]) => {
 async function verify() {
     console.log("Running Verification Test...");
 
-    const VECTOR_STORE_PATH = path.join(process.cwd(), process.env.LANCEDB_URI || "data", "vectors.json");
     const MODEL = process.env.LLM_MODEL || "llama3";
     const EMBED_MODEL = process.env.EMBEDDING_MODEL || "llama3";
 
     // 1. Setup
+    if (!process.env.PG_HOST || !process.env.PG_USER || !process.env.PG_PASSWORD || !process.env.PG_DATABASE) {
+        console.error("Missing PostgreSQL connection details in .env file.");
+        process.exit(1);
+    }
+
     const embeddings = new OllamaEmbeddings({ model: EMBED_MODEL });
 
-    console.log("Loading vectors from disk...");
-    const vectors = JSON.parse(fs.readFileSync(VECTOR_STORE_PATH, "utf-8"));
-    const vectorStore = new MemoryVectorStore(embeddings);
-    vectorStore.memoryVectors = vectors;
+    console.log("Connecting to PGVector store...");
+    const pgConfig = {
+        host: process.env.PG_HOST,
+        port: parseInt(process.env.PG_PORT || "5432"),
+        user: process.env.PG_USER,
+        password: process.env.PG_PASSWORD,
+        database: process.env.PG_DATABASE,
+    };
 
-    const retriever = vectorStore.asRetriever(2);
+    const vectorStore = await PGVectorStore.initialize(embeddings, {
+        postgresConnectionOptions: pgConfig,
+        tableName: "cv_documents",
+        columns: {
+            idColumnName: "id",
+            vectorColumnName: "embedding",
+            contentColumnName: "text",
+            metadataColumnName: "metadata",
+        },
+    });
+
+    const retriever = vectorStore.asRetriever({ k: 2 });
     const llm = new ChatOllama({ model: MODEL, temperature: 0 });
 
     const template = `Answer the question briefly based on context: {context} Question: {question}`;

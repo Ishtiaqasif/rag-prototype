@@ -32,23 +32,17 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const dotenv = __importStar(require("dotenv"));
 dotenv.config();
 const ollama_1 = require("@langchain/ollama");
 const ollama_2 = require("@langchain/ollama");
-const memory_1 = require("@langchain/classic/vectorstores/memory");
+const pgvector_1 = require("@langchain/community/vectorstores/pgvector");
 const output_parsers_1 = require("@langchain/core/output_parsers");
 const prompts_1 = require("@langchain/core/prompts");
 const runnables_1 = require("@langchain/core/runnables");
 const readline = __importStar(require("readline"));
-const path_1 = __importDefault(require("path"));
-const fs_1 = __importDefault(require("fs"));
 // --- Configuration ---
-const VECTOR_STORE_PATH = path_1.default.join(process.cwd(), process.env.LANCEDB_URI || "data", "vectors.json");
 const MODEL_NAME = process.env.LLM_MODEL || "llama3"; // Ensure this matches what you pulled
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "llama3";
 // --- Setup CLI ---
@@ -63,17 +57,31 @@ const formatDocumentsAsString = (documents) => {
 async function main() {
     console.log("Initializing RAG System...");
     // 1. Load Vector DB
-    if (!fs_1.default.existsSync(VECTOR_STORE_PATH)) {
-        console.error(`Error: Vector store not found at ${VECTOR_STORE_PATH}. Please run ingest.ts first.`);
+    if (!process.env.PG_HOST || !process.env.PG_USER || !process.env.PG_PASSWORD || !process.env.PG_DATABASE) {
+        console.error("Missing PostgreSQL connection details in .env file.");
         process.exit(1);
     }
     const embeddings = new ollama_1.OllamaEmbeddings({
         model: EMBEDDING_MODEL,
     });
-    console.log("Loading vectors from disk...");
-    const vectors = JSON.parse(fs_1.default.readFileSync(VECTOR_STORE_PATH, "utf-8"));
-    const vectorStore = new memory_1.MemoryVectorStore(embeddings);
-    vectorStore.memoryVectors = vectors;
+    console.log("Connecting to PGVector store...");
+    const pgConfig = {
+        host: process.env.PG_HOST,
+        port: parseInt(process.env.PG_PORT || "5432"),
+        user: process.env.PG_USER,
+        password: process.env.PG_PASSWORD,
+        database: process.env.PG_DATABASE,
+    };
+    const vectorStore = await pgvector_1.PGVectorStore.initialize(embeddings, {
+        postgresConnectionOptions: pgConfig,
+        tableName: "cv_documents",
+        columns: {
+            idColumnName: "id",
+            vectorColumnName: "embedding",
+            contentColumnName: "text",
+            metadataColumnName: "metadata",
+        },
+    });
     const retriever = vectorStore.asRetriever({
         k: 4, // Retrieve top 4 chunks
         searchType: "similarity",

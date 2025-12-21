@@ -3,7 +3,7 @@ dotenv.config();
 
 import { OllamaEmbeddings } from "@langchain/ollama";
 import { ChatOllama } from "@langchain/ollama";
-import { MemoryVectorStore } from "@langchain/classic/vectorstores/memory";
+import { PGVectorStore } from "@langchain/community/vectorstores/pgvector";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { RunnablePassthrough, RunnableSequence } from "@langchain/core/runnables";
@@ -12,7 +12,6 @@ import path from "path";
 import fs from "fs";
 
 // --- Configuration ---
-const VECTOR_STORE_PATH = path.join(process.cwd(), process.env.LANCEDB_URI || "data", "vectors.json");
 const MODEL_NAME = process.env.LLM_MODEL || "llama3"; // Ensure this matches what you pulled
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "llama3";
 
@@ -32,8 +31,8 @@ async function main() {
     console.log("Initializing RAG System...");
 
     // 1. Load Vector DB
-    if (!fs.existsSync(VECTOR_STORE_PATH)) {
-        console.error(`Error: Vector store not found at ${VECTOR_STORE_PATH}. Please run ingest.ts first.`);
+    if (!process.env.PG_HOST || !process.env.PG_USER || !process.env.PG_PASSWORD || !process.env.PG_DATABASE) {
+        console.error("Missing PostgreSQL connection details in .env file.");
         process.exit(1);
     }
 
@@ -41,10 +40,25 @@ async function main() {
         model: EMBEDDING_MODEL,
     });
 
-    console.log("Loading vectors from disk...");
-    const vectors = JSON.parse(fs.readFileSync(VECTOR_STORE_PATH, "utf-8"));
-    const vectorStore = new MemoryVectorStore(embeddings);
-    vectorStore.memoryVectors = vectors;
+    console.log("Connecting to PGVector store...");
+    const pgConfig = {
+        host: process.env.PG_HOST,
+        port: parseInt(process.env.PG_PORT || "5432"),
+        user: process.env.PG_USER,
+        password: process.env.PG_PASSWORD,
+        database: process.env.PG_DATABASE,
+    };
+
+    const vectorStore = await PGVectorStore.initialize(embeddings, {
+        postgresConnectionOptions: pgConfig,
+        tableName: "cv_documents",
+        columns: {
+            idColumnName: "id",
+            vectorColumnName: "embedding",
+            contentColumnName: "text",
+            metadataColumnName: "metadata",
+        },
+    });
 
     const retriever = vectorStore.asRetriever({
         k: 4, // Retrieve top 4 chunks

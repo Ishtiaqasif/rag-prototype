@@ -40,7 +40,7 @@ const dotenv = __importStar(require("dotenv"));
 dotenv.config();
 const ollama_1 = require("@langchain/ollama");
 const ollama_2 = require("@langchain/ollama");
-const memory_1 = require("@langchain/classic/vectorstores/memory");
+const pgvector_1 = require("@langchain/community/vectorstores/pgvector");
 const output_parsers_1 = require("@langchain/core/output_parsers");
 const prompts_1 = require("@langchain/core/prompts");
 const runnables_1 = require("@langchain/core/runnables");
@@ -48,7 +48,6 @@ const readline = __importStar(require("readline"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 // --- Configuration ---
-const VECTOR_STORE_PATH = path_1.default.join(process.cwd(), process.env.LANCEDB_URI || "data", "cv_vectors.json");
 const MODEL_NAME = process.env.LLM_MODEL || "llama3";
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "llama3";
 // --- State ---
@@ -91,18 +90,31 @@ async function main() {
     console.log("Initializing AI Recruiter System...");
     console.log("---------------------------------------");
     // 1. Load Vector DB
-    if (!fs_1.default.existsSync(VECTOR_STORE_PATH)) {
-        console.error(`Error: Vector store not found at ${VECTOR_STORE_PATH}. Please run ingest_cvs.ts first.`);
+    if (!process.env.PG_HOST || !process.env.PG_USER || !process.env.PG_PASSWORD || !process.env.PG_DATABASE) {
+        console.error("Missing PostgreSQL connection details in .env file.");
         process.exit(1);
     }
     const embeddings = new ollama_2.OllamaEmbeddings({
         model: EMBEDDING_MODEL,
     });
-    console.log("Loading CV vectors...");
-    const vectors = JSON.parse(fs_1.default.readFileSync(VECTOR_STORE_PATH, "utf-8"));
-    const vectorStore = new memory_1.MemoryVectorStore(embeddings);
-    // @ts-ignore - memoryVectors is internal but we can set it for loading
-    vectorStore.memoryVectors = vectors;
+    console.log("Connecting to PGVector store...");
+    const pgConfig = {
+        host: process.env.PG_HOST,
+        port: parseInt(process.env.PG_PORT || "5432"),
+        user: process.env.PG_USER,
+        password: process.env.PG_PASSWORD,
+        database: process.env.PG_DATABASE,
+    };
+    const vectorStore = await pgvector_1.PGVectorStore.initialize(embeddings, {
+        postgresConnectionOptions: pgConfig,
+        tableName: "cv_documents",
+        columns: {
+            idColumnName: "id",
+            vectorColumnName: "embedding",
+            contentColumnName: "text",
+            metadataColumnName: "metadata",
+        },
+    });
     // We retrieve more docs to ensure diversity
     const retriever = vectorStore.asRetriever({
         k: 20,

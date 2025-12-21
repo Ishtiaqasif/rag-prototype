@@ -13,3 +13,4 @@ Skills:
 - Python, TypeScript, C++
 - PyTorch, TensorFlow, Scikit-learn
 - AWS, Docker, Kubernetes
+- C#, dotnet, F#, Rust

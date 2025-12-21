@@ -1,12 +1,13 @@
 # Local RAG Prototype (Node.js)
 
-This project is a simpler, fully local Retrieval-Augmented Generation system using Node.js, LangChain, LanceDB, and Ollama.
+This project is a simpler, fully local Retrieval-Augmented Generation system using Node.js, LangChain, PostgreSQL (pgvector), and Ollama.
 
 ## Prerequisites
 
 1.  **Node.js** (v18+)
 2.  **Ollama**: [Download and Install](https://ollama.com/)
-3.  **Pull Model**:
+3.  **PostgreSQL**: with [pgvector](https://github.com/pgvector/pgvector) extension.
+4.  **Pull Model**:
     ```bash
     ollama pull llama3
     ```
@@ -20,14 +21,17 @@ npm install
 
 ## Configuration
 
-This project uses a `.env` file for configuration. A file has been created with default values:
+This project uses a `.env` file for configuration. Ensure the following variables are set:
 
 ```env
 OLLAMA_BASE_URL=http://localhost:11434
 LLM_MODEL=llama3
 EMBEDDING_MODEL=llama3
-LANCEDB_URI=data/lancedb
-LANCEDB_TABLE=vectors
+PG_HOST=localhost
+PG_PORT=5432
+PG_USER=postgres
+PG_PASSWORD=your_password
+PG_DATABASE=your_database
 ```
 
 ## Usage
