@@ -1,0 +1,15 @@
+Alice Johnson
+Software Engineer
+Email: alice@example.com
+
+Summary:
+Experienced software engineer with a focus on Artificial Intelligence and Machine Learning. Proficient in Python, TensorFlow, and PyTorch. 5 years of experience in building scalable backend systems.
+
+Experience:
+- Senior AI Engineer at TechCorp (2020-Present): Led a team of 5 engineers to build a recommendation engine.
+- Software Developer at StartUp Inc (2018-2020): Developed REST APIs using Flask and Django.
+
+Skills:
+- Python, TypeScript, C++
+- PyTorch, TensorFlow, Scikit-learn
+- AWS, Docker, Kubernetes

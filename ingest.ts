@@ -8,7 +8,7 @@ import { MemoryVectorStore } from "@langchain/classic/vectorstores/memory";
 import path from "path";
 import fs from "fs";
 
-const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_DIR = path.join(process.cwd(), "data/cvs");
 const VECTOR_STORE_PATH = path.join(process.cwd(), process.env.LANCEDB_URI || "data", "vectors.json");
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "llama3";
 

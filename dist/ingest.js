@@ -45,7 +45,7 @@ const ollama_1 = require("@langchain/ollama");
 const memory_1 = require("@langchain/classic/vectorstores/memory");
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
-const DATA_DIR = path_1.default.join(process.cwd(), "data");
+const DATA_DIR = path_1.default.join(process.cwd(), "data/cvs");
 const VECTOR_STORE_PATH = path_1.default.join(process.cwd(), process.env.LANCEDB_URI || "data", "vectors.json");
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "llama3";
 async function main() {
