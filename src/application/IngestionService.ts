@@ -1,9 +1,9 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import { TextLoader } from "@langchain/classic/document_loaders/fs/text";
+import { TextLoader } from "langchain/document_loaders/fs/text";
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
-import { RecursiveCharacterTextSplitter } from "@langchain/classic/text_splitter";
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { IVectorStore } from "../core/interfaces/IVectorStore";
 import { Document } from "../core/entities/Document";
 

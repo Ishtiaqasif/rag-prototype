@@ -1,6 +1,3 @@
-import * as dotenv from "dotenv";
-dotenv.config();
-import path from "path";
 import readline from "readline";
 import { MongoClient } from "mongodb";
 import { ChatService } from "../application/ChatService";
@@ -9,17 +6,7 @@ import { MongoVectorStore } from "../infrastructure/vector/MongoVectorStore";
 import { OllamaClient } from "../infrastructure/llm/OllamaClient";
 import { OllamaChatModel } from "../infrastructure/llm/OllamaChatModel";
 import { IVectorStore } from "../core/interfaces/IVectorStore";
-
-const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "llama3.2:latest";
-const LLM_MODEL = process.env.LLM_MODEL || "llama3";
-const VECTOR_STORE = process.env.VECTOR_STORE || "json";
-const JSON_STORAGE_PATH = path.join(process.cwd(), "data", "json-embeddings", "embeddings.json");
-
-// MongoDB Config
-const MONGODB_ATLAS_URI = process.env.MONGODB_ATLAS_URI || "";
-const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME || "cv-bank";
-const MONGODB_COLLECTION_NAME = process.env.MONGODB_COLLECTION_NAME || "content";
-const MONGODB_INDEX_NAME = process.env.MONGODB_INDEX_NAME || "vector_index";
+import { ConfigService } from "../core/config/ConfigService";
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -29,34 +16,33 @@ const rl = readline.createInterface({
 const askQuestion = (query: string) => new Promise<string>((resolve) => rl.question(query, resolve));
 
 async function main() {
-    console.log(`Starting Chat (Store: ${VECTOR_STORE})...`);
+    const config = ConfigService.getInstance();
+    const storeType = config.vectorStoreType;
 
-    const embeddings = new OllamaClient(EMBEDDING_MODEL);
+    console.log(`Starting Chat (Store: ${storeType})...`);
+
+    const embeddings = new OllamaClient(config.embeddingModel);
     let vectorStore: IVectorStore;
     let mongoClient: MongoClient | null = null;
 
-    if (VECTOR_STORE === "json") {
-        vectorStore = new JsonVectorStore(embeddings, JSON_STORAGE_PATH);
-    } else if (VECTOR_STORE === "mongodb") {
-        if (!MONGODB_ATLAS_URI) {
-            console.error("Missing MONGODB_ATLAS_URI.");
-            process.exit(1);
-        }
-        mongoClient = new MongoClient(MONGODB_ATLAS_URI);
+    if (storeType === "json") {
+        vectorStore = new JsonVectorStore(embeddings, config.jsonStoragePath);
+    } else if (storeType === "mongodb") {
+        mongoClient = new MongoClient(config.mongoUri);
         await mongoClient.connect();
-        const collection = mongoClient.db(MONGODB_DB_NAME).collection(MONGODB_COLLECTION_NAME);
+        const collection = mongoClient.db(config.mongoDbName).collection(config.mongoCollectionName);
 
         vectorStore = new MongoVectorStore(mongoClient, collection, embeddings, {
-            indexName: MONGODB_INDEX_NAME,
+            indexName: config.mongoIndexName,
             textKey: "text",
             embeddingKey: "embedding"
         });
     } else {
-        console.error(`Unsupported store: ${VECTOR_STORE}`);
+        console.error(`Unsupported store: ${storeType}`);
         process.exit(1);
     }
 
-    const llm = new OllamaChatModel(LLM_MODEL);
+    const llm = new OllamaChatModel(config.llmModel);
     const service = new ChatService(vectorStore, llm);
 
     console.log("---------------------------------------------------------");
