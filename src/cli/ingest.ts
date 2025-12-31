@@ -1,46 +1,28 @@
-import { MongoClient } from "mongodb";
 import { IngestionService } from "../application/IngestionService";
-import { JsonVectorStore } from "../infrastructure/vector/JsonVectorStore";
-import { MongoVectorStore } from "../infrastructure/vector/MongoVectorStore";
 import { OllamaClient } from "../infrastructure/llm/OllamaClient";
-import { IVectorStore } from "../core/interfaces/IVectorStore";
 import { ConfigService } from "../core/config/ConfigService";
+import { VectorStoreFactory } from "../infrastructure/factories/VectorStoreFactory";
 
 async function main() {
     const config = ConfigService.getInstance();
-    const storeType = config.vectorStoreType;
 
-    console.log(`Starting Ingestion (Store: ${storeType})...`);
+    console.log(`Starting Ingestion (Store: ${config.vectorStoreType})...`);
 
     // Pass model name to OllamaClient
     const embeddings = new OllamaClient(config.embeddingModel);
-    let vectorStore: IVectorStore;
-    let mongoClient: MongoClient | null = null;
 
-    if (storeType === "json") {
-        vectorStore = new JsonVectorStore(embeddings, config.jsonStoragePath);
-    } else if (storeType === "mongodb") {
-        mongoClient = new MongoClient(config.mongoUri);
-        await mongoClient.connect();
-        const collection = mongoClient.db(config.mongoDbName).collection(config.mongoCollectionName);
+    // Usage of Factory Pattern
+    const vectorStore = await VectorStoreFactory.create(config, embeddings);
 
-        vectorStore = new MongoVectorStore(mongoClient, collection, embeddings, {
-            indexName: config.mongoIndexName,
-            textKey: "text",
-            embeddingKey: "embedding"
-        });
-    } else {
-        console.error(`Unsupported store: ${storeType}`);
-        process.exit(1);
-    }
-
-    const service = new IngestionService(vectorStore);
-    await service.ingestDirectory(config.dataDir);
-
-    console.log("Ingestion complete.");
-
-    if (mongoClient) {
-        await mongoClient.close();
+    try {
+        const service = new IngestionService(vectorStore);
+        await service.ingestDirectory(config.dataDir);
+        console.log("Ingestion complete.");
+    } catch (error) {
+        console.error("Ingestion failed:", error);
+    } finally {
+        // Polymorphic cleanup
+        await vectorStore.close();
     }
 }
 

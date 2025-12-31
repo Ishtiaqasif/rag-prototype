@@ -5,4 +5,5 @@ export interface IVectorStore {
     similaritySearch(query: string, k: number): Promise<Document[]>;
     deleteDocuments(filter: Record<string, any>): Promise<void>;
     exists(filter: Record<string, any>): Promise<boolean>;
+    close(): Promise<void>;
 }

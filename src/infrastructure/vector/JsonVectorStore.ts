@@ -106,4 +106,9 @@ export class JsonVectorStore implements IVectorStore {
             return true;
         });
     }
+
+    async close(): Promise<void> {
+        // No-op for JSON store
+        return Promise.resolve();
+    }
 }
