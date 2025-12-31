@@ -7,6 +7,8 @@ import { PGVectorStore } from "@langchain/community/vectorstores/pgvector";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { RunnablePassthrough, RunnableSequence } from "@langchain/core/runnables";
+import { MongoDBAtlasVectorSearch } from "@langchain/mongodb";
+import { MongoClient } from "mongodb";
 import * as readline from "readline";
 import path from "path";
 import fs from "fs";
@@ -16,6 +18,12 @@ const MODEL_NAME = process.env.LLM_MODEL || "llama3";
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "llama3.2:latest";
 const VECTOR_STORE = process.env.VECTOR_STORE || "json";
 const JSON_STORAGE_PATH = path.join(process.cwd(), "data", "json-embeddings", "embeddings.json");
+
+// MongoDB Config
+const MONGODB_ATLAS_URI = process.env.MONGODB_ATLAS_URI || "";
+const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME || "cv-bank";
+const MONGODB_COLLECTION_NAME = process.env.MONGODB_COLLECTION_NAME || "content";
+const MONGODB_INDEX_NAME = process.env.MONGODB_INDEX_NAME || "vector_index";
 
 // --- Setup CLI ---
 const rl = readline.createInterface({
@@ -49,6 +57,7 @@ async function main() {
     });
 
     let vectorStore: any;
+    let mongoClient: MongoClient | null = null;
 
     if (VECTOR_STORE === "pgvector") {
         if (!process.env.PG_HOST || !process.env.PG_USER || !process.env.PG_PASSWORD || !process.env.PG_DATABASE) {
@@ -84,6 +93,22 @@ async function main() {
         vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
             pineconeIndex,
         });
+    } else if (VECTOR_STORE === "mongodb") {
+        if (!MONGODB_ATLAS_URI) {
+            console.error("Missing MONGODB_ATLAS_URI in .env file.");
+            process.exit(1);
+        }
+        mongoClient = new MongoClient(MONGODB_ATLAS_URI);
+        await mongoClient.connect();
+        const collection = mongoClient.db(MONGODB_DB_NAME).collection(MONGODB_COLLECTION_NAME);
+
+        vectorStore = new MongoDBAtlasVectorSearch(embeddings, {
+            collection: collection as any,
+            indexName: MONGODB_INDEX_NAME,
+            textKey: "text",
+            embeddingKey: "embedding",
+        });
+        console.log("MongoDB Atlas Vector Search initialized.");
     } else if (VECTOR_STORE === "json") {
         console.log(`Using JSON Storage: ${JSON_STORAGE_PATH}`);
     } else {
@@ -121,8 +146,8 @@ async function main() {
         };
     } else {
         retriever = vectorStore.asRetriever({
-            k: 10, // Retrieve top 10 chunks
-            searchType: "similarity",
+            k: 100, // Retrieve top 10 chunks
+            searchType: "cosine",
         });
     }
 
@@ -172,7 +197,11 @@ Answer:`;
         try {
             console.log("Searching resume bank...");
             const retrievedDocs = await retriever.invoke(userInput);
-            console.log(`Found ${retrievedDocs.length} relevant chunks.`);
+            //console.log(`Found ${retrievedDocs.length} relevant chunks.`);
+
+            //for (const doc of retrievedDocs) {
+            //    console.log(`retrievedDocs ${Object.keys(doc)}`);
+            //}
 
             console.log("Thinking...");
             // Stream the response for better UX
