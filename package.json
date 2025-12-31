@@ -5,9 +5,9 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/cli/chat.js",
-    "recruit": "node dist/cli/recruit.js",
-    "ingest": "node dist/cli/ingest.js",
+    "start": "node dist/src/cli/chat.js",
+    "recruit": "node dist/src/cli/recruit.js",
+    "ingest": "node dist/src/cli/ingest.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

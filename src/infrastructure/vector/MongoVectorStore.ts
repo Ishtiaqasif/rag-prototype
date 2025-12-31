@@ -80,26 +80,13 @@ export class MongoVectorStore implements IVectorStore {
     }
 
     async deleteDocuments(filter: Record<string, any>): Promise<void> {
-        // MongoDBAtlasVectorSearch doesn't always expose delete easily via the wrapper?
-        // In `ingest.ts` it used `collection.deleteMany`.
-        // We have access to `this.collection`.
-
-        // Construct mongo query from filter.
-        // Assuming filter keys match metadata fields, e.g. { 'email': '...' } -> { 'metadata.email': '...' }
-        const mongoFilter: Record<string, any> = {};
-        for (const key in filter) {
-            mongoFilter[`metadata.${key}`] = filter[key];
-        }
-
-        await this.collection.deleteMany(mongoFilter);
+        // MongoDBAtlasVectorSearch stores metadata fields at the root of the document based on our observation
+        // or passing them directly.
+        await this.collection.deleteMany(filter);
     }
 
     async exists(filter: Record<string, any>): Promise<boolean> {
-        const mongoFilter: Record<string, any> = {};
-        for (const key in filter) {
-            mongoFilter[`metadata.${key}`] = filter[key];
-        }
-        const result = await this.collection.findOne(mongoFilter);
+        const result = await this.collection.findOne(filter);
         return !!result;
     }
 

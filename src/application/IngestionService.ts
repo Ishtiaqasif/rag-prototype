@@ -36,8 +36,15 @@ export class IngestionService {
         const files = fs.readdirSync(dataDir).filter(f => f.endsWith(".txt") || f.endsWith(".pdf"));
 
         const splitter = new RecursiveCharacterTextSplitter({
-            chunkSize: 2000,
-            chunkOverlap: 200,
+            chunkSize: 1000,
+            chunkOverlap: 100,
+            separators: [
+                "\n----------------\n", // Explicit section separator in CVs
+                "\nSECTION\n",
+                "\n\n",
+                "\n",
+                " "
+            ]
         });
 
         for (const file of files) {
@@ -66,8 +73,15 @@ export class IngestionService {
                     continue;
                 }
 
-                console.log(`Changes detected for ${email}. Updating...`);
-                await this.vectorStore.deleteDocuments({ email: email });
+                // Check if any data exists for this email (ignoring hash) to distinguish Update vs New
+                const isUpdate = await this.vectorStore.exists({ email: email });
+
+                if (isUpdate) {
+                    console.log(`Changes detected for ${email}. Updating...`);
+                    await this.vectorStore.deleteDocuments({ email: email });
+                } else {
+                    console.log(`New candidate detected: ${email}. Ingesting...`);
+                }
 
                 const splitDocs = await splitter.splitDocuments(docs);
                 const documents: Document[] = splitDocs.map((doc: any, i: number) => ({
