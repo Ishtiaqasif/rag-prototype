@@ -1,21 +1,16 @@
+
 import { ConfigService } from "../../core/config/ConfigService";
 import { IEmbeddings } from "../../core/interfaces/IEmbeddings";
-import { GoogleEmbeddings } from "../llm/GoogleEmbeddings";
-import { OllamaClient } from "../llm/OllamaClient";
-import { OpenAIEmbeddings } from "../llm/OpenAIEmbeddings";
+import { OllamaEmbeddingsWrapper } from "../llm/embeddings/OllamaEmbeddings";
 
 export class EmbeddingModelFactory {
     static create(config: ConfigService): IEmbeddings {
-        const provider = config.llmProvider;
+        const provider = config.embeddingProvider;
 
-        if (provider === "google") {
-            return new GoogleEmbeddings(config.googleApiKey, config.googleEmbeddingModel);
-        } else if (provider === "openai") {
-            return new OpenAIEmbeddings(config.openaiApiKey, config.openaiEmbeddingModel);
-        } else if (provider === "ollama") {
-            return new OllamaClient(config.ollamaEmbeddingModel);
+        if (provider === "ollama" || provider === "nomic") {
+            return new OllamaEmbeddingsWrapper(config.ollamaEmbeddingModel);
         } else {
-            throw new Error(`Unsupported LLM Provider for embeddings: ${provider}`);
+            throw new Error(`Unsupported Embedding Provider: ${provider}`);
         }
     }
 }

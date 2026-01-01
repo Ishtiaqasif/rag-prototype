@@ -32,6 +32,7 @@ export class ConfigService {
         const provider = this.llmProvider;
         if (provider === "google") return this.getOrThrow("GOOGLE_LLM_MODEL");
         if (provider === "openai") return this.getOrThrow("OPENAI_LLM_MODEL");
+        if (provider === "huggingface") return this.hfLlmModel;
         return this.getOrThrow("OLLAMA_LLM_MODEL");
     }
 
@@ -39,6 +40,7 @@ export class ConfigService {
         const provider = this.llmProvider;
         if (provider === "google") return this.googleEmbeddingModel;
         if (provider === "openai") return this.openaiEmbeddingModel;
+        if (provider === "huggingface") return this.hfEmbeddingModel;
         return this.ollamaEmbeddingModel;
     }
 
@@ -79,6 +81,10 @@ export class ConfigService {
         return this.getOrThrow("APP_LLM_PROVIDER");
     }
 
+    get embeddingProvider(): string {
+        return this.getOrThrow("APP_EMBEDDING_PROVIDER");
+    }
+
     get googleApiKey(): string {
         return this.getOrThrow("GOOGLE_API_KEY");
     }
@@ -109,5 +115,17 @@ export class ConfigService {
 
     get openaiEmbeddingModel(): string {
         return this.getOrThrow("OPENAI_EMBEDDING_MODEL");
+    }
+
+    get hfApiKey(): string {
+        return this.getOrThrow("HUGGINGFACE_API_KEY");
+    }
+
+    get hfLlmModel(): string {
+        return this.getOrThrow("HUGGINGFACE_LLM_MODEL");
+    }
+
+    get hfEmbeddingModel(): string {
+        return this.getOrThrow("HUGGINGFACE_EMBEDDING_MODEL");
     }
 }

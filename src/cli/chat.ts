@@ -1,6 +1,6 @@
+
 import readline from "readline";
 import { ChatService } from "../application/ChatService";
-import { OllamaClient } from "../infrastructure/llm/OllamaClient";
 import { ConfigService } from "../core/config/ConfigService";
 import { VectorStoreFactory } from "../infrastructure/factories/VectorStoreFactory";
 import { ChatModelFactory } from "../infrastructure/factories/ChatModelFactory";
@@ -20,8 +20,9 @@ async function main() {
     let modelName = config.llmModel; // Default (ollama)
     if (provider === "google") modelName = config.googleModel;
     if (provider === "openai") modelName = config.openaiModel;
+    if (provider === "huggingface") modelName = config.hfLlmModel;
 
-    const temperature = 0.1;
+    const temperature = 0.2;
 
     console.log("---------------------------------------------------------");
     console.log(`RAG Application Startup`);

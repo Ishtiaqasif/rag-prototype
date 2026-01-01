@@ -1,7 +1,6 @@
 import readline from "readline";
 import fs from "fs";
 import { RecruiterService } from "../application/RecruiterService";
-import { OllamaClient } from "../infrastructure/llm/OllamaClient";
 import { OllamaChatModel } from "../infrastructure/llm/OllamaChatModel";
 import { ConfigService } from "../core/config/ConfigService";
 import { VectorStoreFactory } from "../infrastructure/factories/VectorStoreFactory";
@@ -22,6 +21,7 @@ async function main() {
     let modelName = config.llmModel; // Default (ollama)
     if (provider === "google") modelName = config.googleModel;
     if (provider === "openai") modelName = config.openaiModel;
+    if (provider === "huggingface") modelName = config.hfLlmModel;
 
     const temperature = 0.3;
 

@@ -1,10 +1,10 @@
 import { OllamaEmbeddings } from "@langchain/ollama";
-import { IEmbeddings } from "../../core/interfaces/IEmbeddings";
+import { IEmbeddings } from "../../../core/interfaces/IEmbeddings";
 
-export class OllamaClient implements IEmbeddings {
+export class OllamaEmbeddingsWrapper implements IEmbeddings {
     private embeddings: OllamaEmbeddings;
 
-    constructor(modelName: string = "llama3.2:latest") {
+    constructor(modelName: string) {
         this.embeddings = new OllamaEmbeddings({
             model: modelName,
         });

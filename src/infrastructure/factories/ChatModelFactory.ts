@@ -1,6 +1,7 @@
 import { ConfigService } from "../../core/config/ConfigService";
 import { IChatModel } from "../../core/interfaces/IChatModel";
 import { GoogleChatModel } from "../llm/GoogleChatModel";
+import { HuggingFaceChatModel } from "../llm/HuggingFaceChatModel";
 import { OllamaChatModel } from "../llm/OllamaChatModel";
 import { OpenAIChatModel } from "../llm/OpenAIChatModel";
 
@@ -15,6 +16,10 @@ export class ChatModelFactory {
         } else if (provider === "openai") {
             const temp = temperature !== undefined ? temperature : 0.7; // Default for OpenAI
             return new OpenAIChatModel(config.openaiApiKey, config.openaiModel, temp);
+
+        } else if (provider === "huggingface") {
+            const temp = temperature !== undefined ? temperature : 0.7;
+            return new HuggingFaceChatModel(config.hfApiKey, config.hfLlmModel, temp);
 
         } else if (provider === "ollama") {
             const temp = temperature !== undefined ? temperature : 0.2; // Default for Ollama
