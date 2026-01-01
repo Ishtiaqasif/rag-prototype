@@ -1,9 +1,10 @@
 import readline from "readline";
 import { ChatService } from "../application/ChatService";
 import { OllamaClient } from "../infrastructure/llm/OllamaClient";
-import { OllamaChatModel } from "../infrastructure/llm/OllamaChatModel";
 import { ConfigService } from "../core/config/ConfigService";
 import { VectorStoreFactory } from "../infrastructure/factories/VectorStoreFactory";
+import { ChatModelFactory } from "../infrastructure/factories/ChatModelFactory";
+import { EmbeddingModelFactory } from "../infrastructure/factories/EmbeddingModelFactory";
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -14,13 +15,30 @@ const askQuestion = (query: string) => new Promise<string>((resolve) => rl.quest
 
 async function main() {
     const config = ConfigService.getInstance();
-    console.log(`Starting Chat (Store: ${config.vectorStoreType})...`);
+    const provider = config.llmProvider;
 
-    const embeddings = new OllamaClient(config.embeddingModel);
+    let modelName = config.llmModel; // Default (ollama)
+    if (provider === "google") modelName = config.googleModel;
+    if (provider === "openai") modelName = config.openaiModel;
 
-    // Usage of Factory Pattern
+    const temperature = 0.1;
+
+    console.log("---------------------------------------------------------");
+    console.log(`RAG Application Startup`);
+    console.log(`Vector Store : ${config.vectorStoreType}`);
+    console.log(`LLM Provider : ${provider}`);
+    console.log(`Model Name   : ${modelName}`);
+    console.log(`Temperature  : ${temperature}`);
+    console.log("---------------------------------------------------------");
+
+    const embeddings = EmbeddingModelFactory.create(config);
+
+    // Usage of Factory Pattern for Vector Store
     const vectorStore = await VectorStoreFactory.create(config, embeddings);
-    const llm = new OllamaChatModel(config.llmModel);
+
+    // Usage of Factory Pattern for LLM (Polymorphic)
+    const llm = ChatModelFactory.create(config, temperature); // Low temp for accuracy
+
     const service = new ChatService(vectorStore, llm);
 
     console.log("---------------------------------------------------------");

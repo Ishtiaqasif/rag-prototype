@@ -1,15 +1,15 @@
 import { IngestionService } from "../application/IngestionService";
-import { OllamaClient } from "../infrastructure/llm/OllamaClient";
 import { ConfigService } from "../core/config/ConfigService";
 import { VectorStoreFactory } from "../infrastructure/factories/VectorStoreFactory";
+import { EmbeddingModelFactory } from "../infrastructure/factories/EmbeddingModelFactory";
 
 async function main() {
     const config = ConfigService.getInstance();
 
     console.log(`Starting Ingestion (Store: ${config.vectorStoreType})...`);
 
-    // Pass model name to OllamaClient
-    const embeddings = new OllamaClient(config.embeddingModel);
+    // Use Factory for embeddings
+    const embeddings = EmbeddingModelFactory.create(config);
 
     // Usage of Factory Pattern
     const vectorStore = await VectorStoreFactory.create(config, embeddings);

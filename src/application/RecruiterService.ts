@@ -50,17 +50,19 @@ export class RecruiterService {
 
         // 3. Construct prompt
         const prompt = `You are an expert AI Recruiter aiding a hiring manager.
-    
+
 JOB DESCRIPTION:
 ${this.jobDescription}
 
 CANDIDATE DATA (Retrieved chunks from CVs):
 ${context}
 
-Based on the JD and the candidate data provided:
-- Analyze the candidates.
-- Answer the user's question.
-- Always cite the candidate's filename or name.
+INSTRUCTIONS:
+- Analyze the candidates based ONLY on the provided Candidate Data.
+- Compare them against the Job Description.
+- If a candidate does not meet the requirements based on the text, say so.
+- Do not invent qualifications that are not listed in the text.
+- Always cite the candidate's filename or name when making a claim.
 
 Question: ${question}
 Answer:`;

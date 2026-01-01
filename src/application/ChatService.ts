@@ -16,14 +16,19 @@ export class ChatService {
 
     async ask(question: string): Promise<AsyncGenerator<string>> {
         // 1. Retrieve context
-        const docs = await this.vectorStore.similaritySearch(question, 10);
+        const docs = await this.vectorStore.similaritySearch(question, 5);
         const context = this.formatContext(docs);
 
         // 2. Construct prompt
-        const prompt = `Answer the question based only on the following context:
+        const prompt = `You are a helpful AI assistant.
+Answer the user's question purely based on the context provided below.
+If the answer is not present in the context, strictly state "I don't know" or "I cannot answer based on the provided documents".
+Do not make up information.
+
+CONTEXT:
 ${context}
 
-Question: ${question}
+User Question: ${question}
 
 Answer:`;
 

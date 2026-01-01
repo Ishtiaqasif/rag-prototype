@@ -5,6 +5,8 @@ import { OllamaClient } from "../infrastructure/llm/OllamaClient";
 import { OllamaChatModel } from "../infrastructure/llm/OllamaChatModel";
 import { ConfigService } from "../core/config/ConfigService";
 import { VectorStoreFactory } from "../infrastructure/factories/VectorStoreFactory";
+import { ChatModelFactory } from "../infrastructure/factories/ChatModelFactory";
+import { EmbeddingModelFactory } from "../infrastructure/factories/EmbeddingModelFactory";
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -15,13 +17,30 @@ const askQuestion = (query: string) => new Promise<string>((resolve) => rl.quest
 
 async function main() {
     const config = ConfigService.getInstance();
-    console.log(`Starting AI Recruiter (Store: ${config.vectorStoreType})...`);
+    const provider = config.llmProvider;
 
-    const embeddings = new OllamaClient(config.embeddingModel);
+    let modelName = config.llmModel; // Default (ollama)
+    if (provider === "google") modelName = config.googleModel;
+    if (provider === "openai") modelName = config.openaiModel;
 
-    // Usage of Factory Pattern
+    const temperature = 0.3;
+
+    console.log("---------------------------------------------------------");
+    console.log(`AI Recruiter Startup`);
+    console.log(`Vector Store : ${config.vectorStoreType}`);
+    console.log(`LLM Provider : ${provider}`);
+    console.log(`Model Name   : ${modelName}`);
+    console.log(`Temperature  : ${temperature}`);
+    console.log("---------------------------------------------------------");
+
+    const embeddings = EmbeddingModelFactory.create(config);
+
+    // Usage of Factory Pattern for Vector Store
     const vectorStore = await VectorStoreFactory.create(config, embeddings);
-    const llm = new OllamaChatModel(config.llmModel, 0.3);
+
+    // Usage of Factory Pattern for LLM (Polymorphic)
+    const llm = ChatModelFactory.create(config, temperature);
+
     const service = new RecruiterService(vectorStore, llm);
 
     try {

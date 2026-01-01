@@ -29,23 +29,29 @@ export class ConfigService {
     }
 
     get llmModel(): string {
-        return this.getOrThrow("LLM_MODEL");
+        const provider = this.llmProvider;
+        if (provider === "google") return this.getOrThrow("GOOGLE_LLM_MODEL");
+        if (provider === "openai") return this.getOrThrow("OPENAI_LLM_MODEL");
+        return this.getOrThrow("OLLAMA_LLM_MODEL");
     }
 
     get embeddingModel(): string {
-        return this.getOrThrow("EMBEDDING_MODEL");
+        const provider = this.llmProvider;
+        if (provider === "google") return this.googleEmbeddingModel;
+        if (provider === "openai") return this.openaiEmbeddingModel;
+        return this.ollamaEmbeddingModel;
     }
 
     get vectorStoreType(): "json" | "mongodb" {
-        const val = this.getOrThrow("VECTOR_STORE");
+        const val = this.getOrThrow("APP_VECTOR_STORE");
         if (val !== "json" && val !== "mongodb") {
-            throw new Error(`[Config Error] VECTOR_STORE must be 'json' or 'mongodb'. Got: '${val}'`);
+            throw new Error(`[Config Error] APP_VECTOR_STORE must be 'json' or 'mongodb'. Got: '${val}'`);
         }
         return val as "json" | "mongodb";
     }
 
     get dataDir(): string {
-        return this.getOrThrow("DATA_DIR");
+        return this.getOrThrow("APP_DATA_DIR");
     }
 
     get jsonStoragePath(): string {
@@ -54,7 +60,7 @@ export class ConfigService {
     }
 
     get mongoUri(): string {
-        return this.getOrThrow("MONGODB_ATLAS_URI");
+        return this.getOrThrow("MONGODB_URI");
     }
 
     get mongoDbName(): string {
@@ -62,14 +68,46 @@ export class ConfigService {
     }
 
     get mongoCollectionName(): string {
-        return this.getOrThrow("MONGODB_COLLECTION_NAME");
+        return this.getOrThrow("MONGODB_COLLECTION");
     }
 
     get mongoIndexName(): string {
-        return this.getOrThrow("MONGODB_INDEX_NAME");
+        return this.getOrThrow("MONGODB_VECTOR_INDEX");
+    }
+
+    get llmProvider(): string {
+        return this.getOrThrow("APP_LLM_PROVIDER");
+    }
+
+    get googleApiKey(): string {
+        return this.getOrThrow("GOOGLE_API_KEY");
+    }
+
+    get googleModel(): string {
+        return this.getOrThrow("GOOGLE_LLM_MODEL");
+    }
+
+    get googleEmbeddingModel(): string {
+        return this.getOrThrow("GOOGLE_EMBEDDING_MODEL");
     }
 
     get ollamaBaseUrl(): string {
         return this.getOrThrow("OLLAMA_BASE_URL");
+    }
+
+    get ollamaEmbeddingModel(): string {
+        return this.getOrThrow("OLLAMA_EMBEDDING_MODEL");
+    }
+
+    get openaiApiKey(): string {
+        return this.getOrThrow("OPENAI_API_KEY");
+    }
+
+    get openaiModel(): string {
+        return this.getOrThrow("OPENAI_LLM_MODEL");
+    }
+
+    get openaiEmbeddingModel(): string {
+        return this.getOrThrow("OPENAI_EMBEDDING_MODEL");
     }
 }
