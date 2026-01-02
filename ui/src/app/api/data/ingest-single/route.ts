@@ -31,12 +31,16 @@ export async function POST(req: NextRequest) {
             fs.writeFileSync(tempPath, buffer);
 
             try {
-                await ingestionService.ingestFile(tempPath);
+                if (fileName.toLowerCase().endsWith(".zip")) {
+                    await ingestionService.ingestZip(tempPath);
+                } else {
+                    await ingestionService.ingestFile(tempPath);
+                }
             } finally {
                 if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
             }
 
-            return NextResponse.json({ message: `File ${fileName} ingested successfully` });
+            return NextResponse.json({ message: `${fileName} ingested successfully` });
 
         } else {
             // Assume JSON with { text: string, name?: string }

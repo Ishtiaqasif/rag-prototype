@@ -6,12 +6,18 @@ import MessageBubble from "./MessageBubble";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 
+import { Theme } from "./SettingsModal";
+
 interface Message {
     role: "user" | "ai";
     content: string;
 }
 
-export default function ChatContainer() {
+interface ChatContainerProps {
+    theme: Theme;
+}
+
+export default function ChatContainer({ theme }: ChatContainerProps) {
     const [messages, setMessages] = useState<Message[]>([
         {
             role: "ai",
@@ -54,11 +60,18 @@ export default function ChatContainer() {
     };
 
     return (
-        <div className="flex flex-col flex-1 min-h-0 w-full max-w-4xl mx-auto glass-card overflow-hidden">
+        <div className={`flex flex-col flex-1 min-h-0 w-full max-w-4xl mx-auto overflow-hidden transition-all duration-500 border rounded-[2rem] ${theme === 'light'
+            ? 'bg-white/80 border-slate-200 shadow-xl shadow-slate-200/50 backdrop-blur-xl'
+            : theme === 'premium'
+                ? 'bg-black/60 border-emerald-500/20 shadow-2xl shadow-emerald-500/10 backdrop-blur-2xl'
+                : 'glass-card border-white/5 shadow-2xl backdrop-blur-xl'
+            }`}>
             {/* Header */}
-            <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5">
+            <div className={`p-6 border-b flex items-center justify-between transition-colors duration-500 ${theme === 'light' ? 'bg-slate-50/50 border-slate-100' : 'bg-white/5 border-white/5'
+                }`}>
                 <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-all duration-500 ${theme === 'light' ? 'bg-blue-600 shadow-blue-500/20' : theme === 'premium' ? 'bg-emerald-600 shadow-emerald-500/20' : 'bg-indigo-500 shadow-indigo-500/20'
+                        }`}>
                         <Sparkles className="text-white" size={20} />
                     </div>
                     <div>
@@ -75,7 +88,7 @@ export default function ChatContainer() {
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 <AnimatePresence initial={false}>
                     {messages.map((msg, i) => (
-                        <MessageBubble key={i} message={msg} />
+                        <MessageBubble key={i} message={msg} theme={theme} />
                     ))}
                 </AnimatePresence>
 
@@ -95,7 +108,7 @@ export default function ChatContainer() {
             </div>
 
             {/* Input */}
-            <div className="p-6 bg-white/2">
+            <div className={`p-6 transition-colors duration-500 ${theme === 'light' ? 'bg-slate-50/50' : 'bg-white/2'}`}>
                 <div className="relative flex items-center">
                     <input
                         type="text"
@@ -103,17 +116,27 @@ export default function ChatContainer() {
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleSend()}
                         placeholder="Ask about candidates, skills, or experience..."
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 pr-16 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all placeholder:text-gray-500 text-sm"
+                        className={`w-full border rounded-2xl px-6 py-4 pr-16 focus:outline-none focus:ring-4 transition-all text-sm ${theme === 'light'
+                            ? 'bg-white border-slate-200 text-slate-900 focus:ring-blue-500/10 focus:border-blue-500/50 placeholder:text-slate-400'
+                            : theme === 'premium'
+                                ? 'bg-white/5 border-white/10 text-white focus:ring-emerald-500/20 focus:border-emerald-500/50 placeholder:text-gray-500'
+                                : 'bg-white/5 border-white/10 text-white focus:ring-indigo-500/50 focus:border-indigo-500/50 placeholder:text-gray-500'
+                            }`}
                     />
                     <button
                         onClick={handleSend}
                         disabled={!input.trim() || isLoading}
-                        className="absolute right-2 p-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 disabled:hover:bg-indigo-500 text-white transition-all shadow-lg shadow-indigo-500/20"
+                        className={`absolute right-2 p-3 rounded-xl text-white transition-all shadow-lg disabled:opacity-50 ${theme === 'light'
+                            ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'
+                            : theme === 'premium'
+                                ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20 text-black font-bold'
+                                : 'bg-indigo-500 hover:bg-indigo-600 shadow-indigo-500/20'
+                            }`}
                     >
                         <Send size={20} />
                     </button>
                 </div>
-                <p className="text-[10px] text-center mt-3 text-gray-500 uppercase tracking-widest font-medium">
+                <p className={`text-[10px] text-center mt-3 uppercase tracking-widest font-medium ${theme === 'light' ? 'text-slate-400' : 'text-gray-500'}`}>
                     Powered by RAG-Prototype v1.0
                 </p>
             </div>

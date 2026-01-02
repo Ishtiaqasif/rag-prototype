@@ -9,12 +9,14 @@ function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
+import { Theme } from "./SettingsModal";
+
 interface Message {
     role: "user" | "ai";
     content: string;
 }
 
-export default function MessageBubble({ message }: { message: Message }) {
+export default function MessageBubble({ message, theme }: { message: Message, theme: Theme }) {
     const isAI = message.role === "ai";
 
     return (
@@ -31,15 +33,19 @@ export default function MessageBubble({ message }: { message: Message }) {
                 isAI ? "flex-row" : "flex-row-reverse"
             )}>
                 <div className={cn(
-                    "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
-                    isAI ? "bg-indigo-500/20 text-indigo-400 mr-3" : "bg-pink-500/20 text-pink-400 ml-3"
+                    "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-500",
+                    isAI
+                        ? (theme === 'light' ? "bg-blue-100 text-blue-600 mr-3" : theme === 'premium' ? "bg-emerald-500/20 text-emerald-400 mr-3" : "bg-indigo-500/20 text-indigo-400 mr-3")
+                        : (theme === 'light' ? "bg-indigo-100 text-indigo-600 ml-3" : "bg-pink-500/20 text-pink-400 ml-3")
                 )}>
                     {isAI ? <Bot size={18} /> : <User size={18} />}
                 </div>
 
                 <div className={cn(
-                    "px-4 py-3 shadow-lg",
-                    isAI ? "chat-bubble-ai" : "chat-bubble-user"
+                    "px-4 py-3 shadow-lg transition-all duration-500",
+                    isAI
+                        ? (theme === 'light' ? "bg-white border border-slate-100 text-slate-800 rounded-2xl rounded-tl-none" : "chat-bubble-ai")
+                        : (theme === 'light' ? "bg-blue-600 text-white rounded-2xl rounded-tr-none" : "chat-bubble-user")
                 )}>
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">
                         {message.content}

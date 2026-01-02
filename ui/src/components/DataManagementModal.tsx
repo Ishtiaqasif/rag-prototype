@@ -196,13 +196,13 @@ export default function DataManagementModal({ isOpen, onClose }: DataManagementM
                                         <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                                             <Upload className="text-indigo-400" size={32} />
                                         </div>
-                                        <p className="text-lg font-medium mb-1">Click to Upload CV</p>
-                                        <p className="text-sm text-gray-500">Supports .PDF and .TXT files</p>
+                                        <p className="text-lg font-medium mb-1">Click to Upload CV or Archive</p>
+                                        <p className="text-sm text-gray-500">Supports .PDF, .TXT and .ZIP files</p>
                                         <input
                                             type="file"
                                             ref={fileInputRef}
                                             className="hidden"
-                                            accept=".pdf,.txt"
+                                            accept=".pdf,.txt,.zip"
                                             onChange={handleFileIngest}
                                         />
                                     </div>
