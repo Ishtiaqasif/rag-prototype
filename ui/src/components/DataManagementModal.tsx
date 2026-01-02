@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { X, Upload, FileText, Database, Trash2, RefreshCw, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { X, Upload, FileText, Database, Trash2, RefreshCw, Loader2, CheckCircle2, AlertCircle, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
+import { getOrCreateSessionId } from "@/lib/sessionUtils";
 
 interface DataManagementModalProps {
     isOpen: boolean;
@@ -15,16 +16,39 @@ export default function DataManagementModal({ isOpen, onClose }: DataManagementM
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
     const [rawText, setRawText] = useState("");
+    const [isEmpty, setIsEmpty] = useState(true);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const resetStatus = () => setStatus(null);
+
+    useEffect(() => {
+        if (isOpen) {
+            checkSessionStatus();
+        }
+    }, [isOpen]);
+
+    const checkSessionStatus = async () => {
+        try {
+            const sessionId = getOrCreateSessionId();
+            const res = await axios.get("/api/data/status", {
+                headers: { "x-session-id": sessionId }
+            });
+            setIsEmpty(res.data.isEmpty);
+        } catch (err) {
+            console.error("Failed to check session status:", err);
+        }
+    };
 
     const handleSync = async () => {
         setLoading(true);
         resetStatus();
         try {
-            const res = await axios.post("/api/data/ingest");
+            const sessionId = getOrCreateSessionId();
+            const res = await axios.post("/api/data/ingest", {}, {
+                headers: { "x-session-id": sessionId }
+            });
             setStatus({ type: "success", message: res.data.message });
+            await checkSessionStatus();
         } catch (err: any) {
             setStatus({ type: "error", message: err.response?.data?.error || "Directory sync failed" });
         } finally {
@@ -32,13 +56,34 @@ export default function DataManagementModal({ isOpen, onClose }: DataManagementM
         }
     };
 
-    const handleWipe = async () => {
-        if (!confirm("Are you sure you want to wipe all candidate data? This cannot be undone.")) return;
+    const handleSampleData = async () => {
         setLoading(true);
         resetStatus();
         try {
-            const res = await axios.post("/api/data/wipe");
+            const sessionId = getOrCreateSessionId();
+            const res = await axios.post("/api/data/sample", {}, {
+                headers: { "x-session-id": sessionId }
+            });
             setStatus({ type: "success", message: res.data.message });
+            await checkSessionStatus();
+        } catch (err: any) {
+            setStatus({ type: "error", message: err.response?.data?.error || "Sample data ingestion failed" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleWipe = async () => {
+        if (!confirm("Are you sure you want to wipe all your session data? This cannot be undone.")) return;
+        setLoading(true);
+        resetStatus();
+        try {
+            const sessionId = getOrCreateSessionId();
+            const res = await axios.post("/api/data/wipe", {}, {
+                headers: { "x-session-id": sessionId }
+            });
+            setStatus({ type: "success", message: res.data.message });
+            await checkSessionStatus();
         } catch (err: any) {
             setStatus({ type: "error", message: err.response?.data?.error || "Database wipe failed" });
         } finally {
@@ -51,9 +96,13 @@ export default function DataManagementModal({ isOpen, onClose }: DataManagementM
         setLoading(true);
         resetStatus();
         try {
-            const res = await axios.post("/api/data/ingest-single", { text: rawText });
+            const sessionId = getOrCreateSessionId();
+            const res = await axios.post("/api/data/ingest-single", { text: rawText }, {
+                headers: { "x-session-id": sessionId }
+            });
             setStatus({ type: "success", message: res.data.message });
             setRawText("");
+            await checkSessionStatus();
         } catch (err: any) {
             setStatus({ type: "error", message: err.response?.data?.error || "Text ingestion failed" });
         } finally {
@@ -71,11 +120,16 @@ export default function DataManagementModal({ isOpen, onClose }: DataManagementM
         formData.append("file", file);
 
         try {
+            const sessionId = getOrCreateSessionId();
             const res = await axios.post("/api/data/ingest-single", formData, {
-                headers: { "Content-Type": "multipart/form-data" },
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                    "x-session-id": sessionId
+                },
             });
             setStatus({ type: "success", message: res.data.message });
             if (fileInputRef.current) fileInputRef.current.value = "";
+            await checkSessionStatus();
         } catch (err: any) {
             setStatus({ type: "error", message: err.response?.data?.error || "File ingestion failed" });
         } finally {
@@ -100,12 +154,36 @@ export default function DataManagementModal({ isOpen, onClose }: DataManagementM
                             <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
                                 <Database className="text-indigo-400" size={20} />
                             </div>
-                            <h2 className="font-semibold text-xl">Data Management</h2>
+                            <div>
+                                <h2 className="font-semibold text-xl">Data Management</h2>
+                                <p className="text-xs text-gray-500">Session-Isolated Storage</p>
+                            </div>
                         </div>
                         <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-colors">
                             <X size={20} />
                         </button>
                     </div>
+
+                    {/* Session Status Banner */}
+                    {isEmpty && (
+                        <div className="p-4 bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                                <AlertCircle className="text-amber-400" size={20} />
+                                <div>
+                                    <p className="text-sm font-medium text-amber-300">Session Directory Empty</p>
+                                    <p className="text-xs text-amber-400/70">No candidate data found in your session.</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={handleSampleData}
+                                disabled={loading}
+                                className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-black font-semibold text-sm transition-all disabled:opacity-50 flex items-center space-x-2"
+                            >
+                                <Sparkles size={16} />
+                                <span>Load Sample Data</span>
+                            </button>
+                        </div>
+                    )}
 
                     {/* Tabs */}
                     <div className="flex border-b border-white/5 bg-white/2">
@@ -138,10 +216,9 @@ export default function DataManagementModal({ isOpen, onClose }: DataManagementM
                                     className="space-y-6"
                                 >
                                     <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-2xl p-6">
-                                        <h3 className="text-lg font-medium mb-2">Sync Candidate Bank</h3>
+                                        <h3 className="text-lg font-medium mb-2">Sync Session Directory</h3>
                                         <p className="text-sm text-gray-400 mb-6">
-                                            Automatically process all CVs (.txt, .pdf) located in your configured data directory.
-                                            Only new or changed files will be processed.
+                                            Process all CVs (.txt, .pdf) in your isolated session directory. Only new or changed files will be processed.
                                         </p>
                                         <button
                                             onClick={handleSync}
@@ -163,7 +240,7 @@ export default function DataManagementModal({ isOpen, onClose }: DataManagementM
                                     exit={{ opacity: 0, x: 10 }}
                                     className="space-y-4 flex-1 flex flex-col"
                                 >
-                                    <p className="text-sm text-gray-400">Paste the raw text content of a CV below to ingest it into the RAG engine.</p>
+                                    <p className="text-sm text-gray-400">Paste the raw text content of a CV below to ingest it into your session.</p>
                                     <textarea
                                         value={rawText}
                                         onChange={(e) => setRawText(e.target.value)}
@@ -241,9 +318,9 @@ export default function DataManagementModal({ isOpen, onClose }: DataManagementM
                             className="px-4 py-2 rounded-lg text-red-400 hover:bg-red-500/10 flex items-center space-x-2 transition-colors disabled:opacity-50"
                         >
                             <Trash2 size={16} />
-                            <span className="text-sm font-medium">Wipe All Data</span>
+                            <span className="text-sm font-medium">Wipe Session Data</span>
                         </button>
-                        <p className="text-[10px] text-gray-500 uppercase tracking-widest">Database Management v1.0</p>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-widest">Session-Isolated v2.0</p>
                     </div>
                 </motion.div>
             </div>

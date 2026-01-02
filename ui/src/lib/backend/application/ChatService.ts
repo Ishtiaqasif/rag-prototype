@@ -14,9 +14,9 @@ export class ChatService {
         return documents.map(doc => doc.pageContent).join("\n\n");
     }
 
-    async ask(question: string): Promise<string> {
+    async ask(question: string, sessionId: string): Promise<string> {
         // 1. Retrieve context
-        const docs = await this.vectorStore.similaritySearch(question, 10);
+        const docs = await this.vectorStore.similaritySearch(question, 10, { sessionId });
         const context = this.formatContext(docs);
 
         // 2. Construct prompt

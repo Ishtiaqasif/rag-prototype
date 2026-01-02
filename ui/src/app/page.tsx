@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ChatContainer from "@/components/ChatContainer";
 import DataManagementModal from "@/components/DataManagementModal";
 import SettingsModal, { Theme } from "@/components/SettingsModal";
 import { Database, Settings } from "lucide-react";
+import { getOrCreateSessionId } from "@/lib/sessionUtils";
+import axios from "axios";
 
 export default function Home() {
   const [isDataModalOpen, setIsDataModalOpen] = useState(false);
@@ -33,6 +35,22 @@ export default function Home() {
   };
 
   const current = themeConfig[theme];
+
+  useEffect(() => {
+    const handleCleanup = async () => {
+      const sessionId = getOrCreateSessionId();
+      try {
+        await axios.post("/api/data/cleanup", {}, {
+          headers: { "x-session-id": sessionId }
+        });
+      } catch (err) {
+        console.error("Cleanup failed:", err);
+      }
+    };
+
+    window.addEventListener("beforeunload", handleCleanup);
+    return () => window.removeEventListener("beforeunload", handleCleanup);
+  }, []);
 
   return (
     <main className={`h-screen relative flex flex-col p-4 md:p-6 overflow-hidden transition-colors duration-500 ${current.bg} ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>

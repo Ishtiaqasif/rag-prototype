@@ -3,9 +3,11 @@ import { ConfigService } from "@/lib/backend/core/config/ConfigService";
 import { EmbeddingModelFactory } from "@/lib/backend/infrastructure/factories/EmbeddingModelFactory";
 import { VectorStoreFactory } from "@/lib/backend/infrastructure/factories/VectorStoreFactory";
 import { IngestionService } from "@/lib/backend/application/IngestionService";
+import { getSessionId } from "@/lib/backend/utils/sessionUtils";
 
 export async function POST(req: NextRequest) {
     try {
+        const sessionId = getSessionId(req);
         const config = ConfigService.getInstance();
         const embeddings = EmbeddingModelFactory.create(config);
         const vectorStore = await VectorStoreFactory.create(config, embeddings);
@@ -23,18 +25,16 @@ export async function POST(req: NextRequest) {
 
             const buffer = Buffer.from(await file.arrayBuffer());
             const fileName = file.name;
-            const tempPath = `./temp_${fileName}`;
+            const tempPath = `./temp_${sessionId}_${fileName}`;
 
-            // Note: In a real app we'd use a robust temp file handling
-            // For this RAG prototype, we'll write it temporarily for the loaders
             const fs = require("fs");
             fs.writeFileSync(tempPath, buffer);
 
             try {
                 if (fileName.toLowerCase().endsWith(".zip")) {
-                    await ingestionService.ingestZip(tempPath);
+                    await ingestionService.ingestZip(tempPath, sessionId);
                 } else {
-                    await ingestionService.ingestFile(tempPath);
+                    await ingestionService.ingestFile(tempPath, sessionId);
                 }
             } finally {
                 if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
@@ -43,14 +43,13 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: `${fileName} ingested successfully` });
 
         } else {
-            // Assume JSON with { text: string, name?: string }
             const { text, name } = await req.json();
 
             if (!text) {
                 return NextResponse.json({ error: "Text content is required" }, { status: 400 });
             }
 
-            await ingestionService.ingestSingleCV(text, name || "raw_text_input");
+            await ingestionService.ingestSingleCV(text, name || "raw_text_input", sessionId);
             return NextResponse.json({ message: "Text content ingested successfully" });
         }
 

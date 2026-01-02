@@ -71,9 +71,29 @@ export class MongoVectorStore implements IVectorStore {
         await this.vectorStore.addDocuments(lcDocs);
     }
 
-    async similaritySearch(query: string, k: number): Promise<Document[]> {
-        const results = await this.vectorStore.similaritySearch(query, k);
-        return results.map(r => ({
+    async similaritySearch(query: string, k: number, filter?: Record<string, any>): Promise<Document[]> {
+        // MongoDB Atlas Vector Search requires indexed fields for pre-filtering
+        // To avoid index requirements, we'll do post-filtering instead
+        // Retrieve more results and filter in application code
+        const retrievalMultiplier = filter ? 3 : 1;
+        const results = await this.vectorStore.similaritySearch(query, k * retrievalMultiplier);
+
+        let filteredResults = results;
+
+        // Apply filter if provided
+        if (filter) {
+            filteredResults = results.filter(doc => {
+                for (const key in filter) {
+                    if (doc.metadata[key] !== filter[key]) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+        }
+
+        // Return top k results after filtering
+        return filteredResults.slice(0, k).map(r => ({
             pageContent: r.pageContent,
             metadata: r.metadata,
         }));

@@ -2,18 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { ConfigService } from "@/lib/backend/core/config/ConfigService";
 import { EmbeddingModelFactory } from "@/lib/backend/infrastructure/factories/EmbeddingModelFactory";
 import { VectorStoreFactory } from "@/lib/backend/infrastructure/factories/VectorStoreFactory";
+import { IngestionService } from "@/lib/backend/application/IngestionService";
+import { getSessionId } from "@/lib/backend/utils/sessionUtils";
 
 export async function POST(req: NextRequest) {
     try {
+        const sessionId = getSessionId(req);
+        console.log(`[WIPE] Starting wipe for session: ${sessionId}`);
+
         const config = ConfigService.getInstance();
         const embeddings = EmbeddingModelFactory.create(config);
         const vectorStore = await VectorStoreFactory.create(config, embeddings);
+        const ingestionService = new IngestionService(vectorStore);
 
-        await vectorStore.deleteDocuments({});
+        await ingestionService.cleanupSession(sessionId, config.vectorStoreType);
+        console.log(`[WIPE] Successfully wiped session: ${sessionId}`);
 
-        return NextResponse.json({ message: "Database wiped successfully" });
+        return NextResponse.json({ message: "All session data wiped successfully" });
     } catch (error: any) {
-        console.error("Wipe API Error:", error);
+        console.error("[WIPE] Error:", error);
         return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
     }
 }

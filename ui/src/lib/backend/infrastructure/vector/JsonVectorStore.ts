@@ -63,8 +63,21 @@ export class JsonVectorStore implements IVectorStore {
         this.writeData([...data, ...docsWithVectors]);
     }
 
-    async similaritySearch(query: string, k: number): Promise<Document[]> {
-        const data = this.readData();
+    async similaritySearch(query: string, k: number, filter?: Record<string, any>): Promise<Document[]> {
+        let data = this.readData();
+
+        // Apply filter if provided
+        if (filter) {
+            data = data.filter(doc => {
+                for (const key in filter) {
+                    if (doc.metadata[key] !== filter[key]) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+        }
+
         const queryVector = await this.embeddings.embedQuery(query);
 
         return data
@@ -75,7 +88,7 @@ export class JsonVectorStore implements IVectorStore {
             .sort((a: any, b: any) => b.score - a.score)
             .slice(0, k)
             .map(doc => {
-                const { score, ...rest } = doc as any; // Remove score from returned object if strict type
+                const { score, ...rest } = doc as any; // Remove score from returned object
                 return rest as Document;
             });
     }

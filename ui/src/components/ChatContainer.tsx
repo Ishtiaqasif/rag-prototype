@@ -5,6 +5,7 @@ import { Send, Loader2, Sparkles } from "lucide-react";
 import MessageBubble from "./MessageBubble";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
+import { getOrCreateSessionId } from "@/lib/sessionUtils";
 
 import { Theme } from "./SettingsModal";
 
@@ -45,7 +46,10 @@ export default function ChatContainer({ theme }: ChatContainerProps) {
         setIsLoading(true);
 
         try {
-            const response = await axios.post("/api/chat", { message: userMessage });
+            const sessionId = getOrCreateSessionId();
+            const response = await axios.post("/api/chat", { message: userMessage }, {
+                headers: { "x-session-id": sessionId }
+            });
             const aiResponse = response.data.response;
             setMessages((prev) => [...prev, { role: "ai", content: aiResponse }]);
         } catch (error) {

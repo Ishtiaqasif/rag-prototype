@@ -1,0 +1,58 @@
+============================================================
+MARY RODRIGUEZ
+Strategic Product Manager
+============================================================
+Email: mary.rodriguez.92@example.com | Phone: +1 (518) 528-5838
+Address: 978 Maple St, Austin, WA
+
+COMPETENCIES
+------------
+Technical Expertise: Product Strategy, User Research, Stakeholder Management, Market Analysis, Agile, GTM Strategy, UX Design, Roadmapping
+Core Tools: Git, Docker, Kubernetes, Jenkins, Slack, Trello, Confluence, Microsoft 365.
+I also possess a strong foundation in soft skills, including effective communication, team building, and strategic negotiation. My ability to explain complex technical concepts to non-technical stakeholders has been a key factor in the successful delivery of numerous enterprise-scale initiatives across my professional journey.
+
+PROFESSIONAL EXPERIENCE
+-----------------------
+
+Role: Strategic Product Manager at Summit Services
+Tenure: 2020 - 2024
+Responsibilities and Accomplishments:
+- Defined and executed the product vision for a flagship SaaS platform, achieving a 3x increase in Monthly Recurring Revenue over 2 years. As part of my core responsibilities, I focused on improving the overall robustness of our systems and ensured that our team adhered to the highest industry standards. This involved regular collaboration with stakeholders and constant iteration on our internal processes to drive maximum efficiency.
+- Spearheaded the integration of generative AI features into the product, resulting in a 25% increase in user efficiency scores. As part of my core responsibilities, I focused on improving the overall robustness of our systems and ensured that our team adhered to the highest industry standards. This involved regular collaboration with stakeholders and constant iteration on our internal processes to drive maximum efficiency.
+- Managed the development and rollout of an external API platform, creating a new $2M annual revenue stream through partnerships. As part of my core responsibilities, I focused on improving the overall robustness of our systems and ensured that our team adhered to the highest industry standards. This involved regular collaboration with stakeholders and constant iteration on our internal processes to drive maximum efficiency.
+- Conducted 100+ user interviews to identify critical pain points, leading to a complete redesign of the core dashboard and high customer praise. As part of my core responsibilities, I focused on improving the overall robustness of our systems and ensured that our team adhered to the highest industry standards. This involved regular collaboration with stakeholders and constant iteration on our internal processes to drive maximum efficiency.
+
+Role: Strategic Product Manager at SkyNetics
+Tenure: 2016 - 2020
+Responsibilities and Accomplishments:
+- Spearheaded the integration of generative AI features into the product, resulting in a 25% increase in user efficiency scores. As part of my core responsibilities, I focused on improving the overall robustness of our systems and ensured that our team adhered to the highest industry standards. This involved regular collaboration with stakeholders and constant iteration on our internal processes to drive maximum efficiency.
+- Used data analytics (Amplitude/Mixpanel) to identify and eliminate underperforming features, reducing platform complexity by 15%. As part of my core responsibilities, I focused on improving the overall robustness of our systems and ensured that our team adhered to the highest industry standards. This involved regular collaboration with stakeholders and constant iteration on our internal processes to drive maximum efficiency.
+- Conducted 100+ user interviews to identify critical pain points, leading to a complete redesign of the core dashboard and high customer praise. As part of my core responsibilities, I focused on improving the overall robustness of our systems and ensured that our team adhered to the highest industry standards. This involved regular collaboration with stakeholders and constant iteration on our internal processes to drive maximum efficiency.
+- Collaborated with marketing and sales to define a successful go-to-market strategy for an international expansion into European markets. As part of my core responsibilities, I focused on improving the overall robustness of our systems and ensured that our team adhered to the highest industry standards. This involved regular collaboration with stakeholders and constant iteration on our internal processes to drive maximum efficiency.
+
+MAJOR ACHIEVEMENTS
+------------------
+Lead Contributor to 'Open-Source Enterprise Scale' - a project focused on optimizing distributed systems.
+Maintained and spearheaded the development of several internal libraries that have since been adopted as the primary standard within the organization for all new service deployments. These projects required meticulous attention to detail and a proactive approach to potential challenges.
+
+ADDITIONAL INFORMATION
+----------------------
+Certifications: AWS Professional, Google Cloud Architect, SHRM Senior Professional.
+Languages: English (Native), Spanish (Conversational), French (Basic).
+In my personal life, I am an avid traveler and enjoy exploring diverse cultures. I am also a volunteer mentor at a local non-profit, where I help young professionals develop their career paths and technical skillsets. I believe that giving back to the community is an essential part of being a well-rounded professional in today's fast-paced world.
+
+ACADEMIC BACKGROUND
+-------------------
+- MS in Systems Engineering, Metropolitan City College (4.0 GPA)
+- BS in Scientific Foundations, TechValley Polytech
+Participated in several advanced seminars on professional leadership and organizational behavior. Awarded the Dean's List honors for consecutive semesters due to outstanding academic performance and commitment to learning.
+
+CAREER OVERVIEW
+---------------
+Visionary product manager with 10+ years of experience in defining product strategies and delivering high-impact digital solutions. User-centric product leader adept at leading cross-functional teams to solve complex market problems and drive measurable growth.
+
+Throughout my career, I have consistently demonstrated a commitment to excellence and a relentless drive for results. I am particularly adept at bridging the gap between technical complexity and business objectives, ensuring that every project I lead not only meets rigorous standards but also contributes directly to the overall success of the organization. My approach is rooted in collaborative problem-solving and a dedication to continuous professional development.
+
+
+Verification ID: 92-mb08y8
+End of CV Document
